@@ -1,0 +1,8 @@
+---
+description: Best practices for using Tailwind CSS
+globs: **/*.{ts,tsx,css}
+---
+- Use Tailwind CSS 3.4's new arbitrary value syntax for custom styles
+- Implement responsive design using Tailwind's mobile-first approach
+- Utilize Tailwind's new `@apply` directive for component-level styling
+- Leverage Tailwind's improved dark mode support

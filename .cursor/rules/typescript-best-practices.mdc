@@ -1,0 +1,8 @@
+---
+description: TypeScript coding standards and type safety guidelines
+globs: **/*.{ts,tsx}
+---
+- Use TypeScript 5's new `satisfies` operator for type narrowing
+- Implement proper type inference with the new `const` type
+- Utilize TypeScript 5's improved union type inference
+- Leverage the new `export type` syntax for better module organization

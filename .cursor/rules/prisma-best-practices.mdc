@@ -1,0 +1,8 @@
+---
+description: Best practices for using Prisma ORM
+globs: **/*.{ts,tsx}
+---
+- Use Prisma 6.4's new `findUniqueOrThrow` method for safer queries
+- Implement proper transaction handling with Prisma's new `transaction` API
+- Utilize Prisma's improved relation loading with the `include` option
+- Leverage Prisma's new `aggregate` function for complex data operations

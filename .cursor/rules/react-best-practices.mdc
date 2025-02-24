@@ -1,0 +1,8 @@
+---
+description: Best practices for React development
+globs: **/*.{ts,tsx,js,jsx}
+---
+- Use React 19's new `use` hook for data fetching and suspense
+- Implement proper error boundaries with the new `useErrorBoundary` hook
+- Utilize React 19's improved context API for state management
+- Leverage the new `useFormState` hook for form handling

@@ -1,0 +1,8 @@
+---
+description: Best practices for Next.js applications and routing
+globs: **/*.{ts,tsx}
+---
+- Utilize Next.js 15's Turbopack for faster development builds
+- Implement server components for improved performance and SEO
+- Use the new `use client` directive for client-side components
+- Leverage Next.js 15's improved image optimization features
