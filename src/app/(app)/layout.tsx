@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { cn } from "@/lib/utils";
 
 export default function AppLayout({
   children,
@@ -16,7 +17,10 @@ export default function AppLayout({
     >
       <div className="flex h-screen">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto p-8">{children}</main>
+        <main className={cn(
+          "flex-1 overflow-y-auto p-8",
+          "pl-24 md:pl-8"
+        )}>{children}</main>
       </div>
       <Toaster />
     </ThemeProvider>

@@ -1,32 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useToast } from "@/components/ui/use-toast";
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const { data: session, status } = useSession();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("from") || "/inventory";
-  
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"email" | "credentials" | "microsoft">("email");
+  const [userExists, setUserExists] = useState(false);
 
-  useEffect(() => {
-    if (session) {
-      router.push("/inventory");
+  const checkEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch(`/api/users/check-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+      setUserExists(data.exists);
+      setStep(data.exists ? "credentials" : "microsoft");
+    } catch (error) {
+      console.error("Error checking email:", error);
+      toast.error("Failed to check email. Please try again.");
+    } finally {
+      setLoading(false);
     }
-  }, [session, router]);
+  };
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
-
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+  const handleCredentialsLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
     try {
       const result = await signIn("credentials", {
@@ -36,79 +46,171 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast({
-          title: "Error",
-          description: "Invalid email or password",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        toast.error("Invalid credentials");
+      } else {
+        // Successful login
+        toast.success("Login successful");
+        router.push("/inventory");
+        router.refresh();
       }
-
-      router.push(callbackUrl);
-      router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
+      console.error("Login error:", error);
+      toast.error("An error occurred during login");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // Show loading state while checking session
-  if (status === "loading") {
-    return <div className="flex min-h-screen items-center justify-center">Loading...</div>;
-  }
+  const handleMicrosoftLogin = async () => {
+    setLoading(true);
+    try {
+      await signIn("azure-ad", { 
+        callbackUrl: "/inventory",
+        redirect: true
+      });
+    } catch (error) {
+      console.error("Microsoft login error:", error);
+      toast.error("Failed to login with Microsoft");
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-md space-y-8 rounded-lg border bg-card p-8 shadow-lg">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Welcome to TruInventory</h1>
-          <p className="text-sm text-muted-foreground">
-            Please sign in to continue
-          </p>
-        </div>
-        <form onSubmit={onSubmit} className="mt-8 space-y-6">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="w-[400px]">
+        <CardHeader>
+          <CardTitle>Login</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
                 id="email"
-                name="email"
                 type="email"
-                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1 block w-full rounded-md border bg-background px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                disabled={step !== "email"}
               />
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="mt-1 block w-full rounded-md border bg-background px-3 py-2 text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
+
+            {step === "email" && (
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading}
+                onClick={checkEmail}
+              >
+                {loading ? "Checking..." : "Continue"}
+              </Button>
+            )}
+
+            {step === "credentials" && (
+              <form onSubmit={handleCredentialsLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      or
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full bg-white hover:bg-gray-50 text-black dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white flex items-center justify-center gap-2"
+                  onClick={handleMicrosoftLogin}
+                  disabled={loading}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23">
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                  </svg>
+                  Sign in with Microsoft
+                </Button>
+              </form>
+            )}
+
+            {step === "microsoft" && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full bg-white hover:bg-gray-50 text-black dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-white flex items-center justify-center gap-2"
+                  onClick={handleMicrosoftLogin}
+                  disabled={loading}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23">
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                  </svg>
+                  Sign in with Microsoft
+                </Button>
+
+                {userExists && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          or
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setStep("credentials")}
+                    >
+                      Sign in with password
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+
+            {step !== "email" && (
+              <Button
+                type="button"
+                variant="link"
+                className="w-full"
+                onClick={() => {
+                  setStep("email");
+                  setPassword("");
+                }}
+              >
+                Use a different email
+              </Button>
+            )}
           </div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50"
-          >
-            {isLoading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

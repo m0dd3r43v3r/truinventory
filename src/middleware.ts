@@ -10,14 +10,20 @@ export default withAuth(
 
     // Check if it's a public route
     if (publicRoutes.some(route => pathname.startsWith(route))) {
-      return null;
+      return NextResponse.next();
     }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        // Allow access to setup page without a token
+        if (req.nextUrl.pathname.startsWith("/setup")) {
+          return true;
+        }
+        return !!token;
+      },
     },
     pages: {
       signIn: "/login",

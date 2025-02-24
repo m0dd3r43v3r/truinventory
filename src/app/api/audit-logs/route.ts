@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { db } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -11,11 +11,23 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    if (session.user.role !== "ADMIN") {
-      return new NextResponse("Forbidden", { status: 403 });
-    }
+    // Get itemId from query params if it exists
+    const { searchParams } = new URL(req.url);
+    const itemId = searchParams.get("itemId");
+
+    // Build where clause
+    const where = {
+      ...(itemId ? { itemId } : {}),
+      // If not admin, only show logs for items
+      ...(!session.user.role.includes("ADMIN") ? { 
+        NOT: {
+          itemId: null
+        }
+      } : {})
+    };
 
     const logs = await db.auditLog.findMany({
+      where,
       orderBy: {
         createdAt: "desc",
       },
