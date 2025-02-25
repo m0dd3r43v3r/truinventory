@@ -44,6 +44,257 @@ interface AuditLog {
   };
 }
 
+// Component to format audit log details in a more readable way
+function AuditLogDetails({ details, action }: { details: any; action: string }) {
+  if (!details) return <span className="text-muted-foreground">No details available</span>;
+
+  // Handle different types of audit logs based on the action and content
+  if (action === "UPDATE" && details.changes) {
+    // Special handling for ITEM_UPDATED with customFields
+    if (details.type === "ITEM_UPDATED" && details.changes.customFields) {
+      return (
+        <div className="space-y-2 max-w-md">
+          <div className="text-xs font-medium">Custom Fields:</div>
+          <div className="grid grid-cols-2 gap-2 mt-1">
+            <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
+              <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
+              {details.changes.customFields.from && typeof details.changes.customFields.from === 'object' ? (
+                Object.entries(details.changes.customFields.from)
+                  .map(([k, v]) => {
+                    const displayKey = formatCustomFieldKey(k);
+                    if (!displayKey) return null; // Skip entries with empty keys
+                    return (
+                      <div key={k} className="text-xs">
+                        <span className="font-medium">{displayKey}:</span> {String(v)}
+                      </div>
+                    );
+                  })
+                  .filter(Boolean) // Filter out null entries
+              ) : details.changes.customFields.from && typeof details.changes.customFields.from === 'string' ? (
+                <div className="break-words">
+                  {formatValue(details.changes.customFields.from)}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">None</span>
+              )}
+            </div>
+            <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+              <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
+              {details.changes.customFields.to && typeof details.changes.customFields.to === 'object' ? (
+                Object.entries(details.changes.customFields.to)
+                  .map(([k, v]) => {
+                    const displayKey = formatCustomFieldKey(k);
+                    if (!displayKey) return null; // Skip entries with empty keys
+                    return (
+                      <div key={k} className="text-xs">
+                        <span className="font-medium">{displayKey}:</span> {String(v)}
+                      </div>
+                    );
+                  })
+                  .filter(Boolean) // Filter out null entries
+              ) : details.changes.customFields.to && typeof details.changes.customFields.to === 'string' ? (
+                <div className="break-words">
+                  {formatValue(details.changes.customFields.to)}
+                </div>
+              ) : (
+                <span className="text-muted-foreground">None</span>
+              )}
+            </div>
+          </div>
+          
+          {/* Show other changes if any */}
+          {Object.entries(details.changes)
+            .filter(([field, _]) => field !== 'customFields' && field !== 'timestamp')
+            .map(([field, change]: [string, any]) => (
+              <div key={field} className="text-xs mt-2">
+                <div className="font-medium">{formatKey(field)}:</div>
+                {change.from !== undefined && change.to !== undefined && (
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
+                      <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
+                      <div className="break-words">{formatValue(change.from)}</div>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+                      <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
+                      <div className="break-words">{formatValue(change.to)}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
+      );
+    }
+    
+    // Regular update handling
+    return (
+      <div className="space-y-2 max-w-md">
+        {Object.entries(details.changes)
+          .filter(([_, change]) => change !== undefined)
+          .map(([field, change]: [string, any]) => (
+            <div key={field} className="text-xs">
+              <div className="font-medium">{formatKey(field)}:</div>
+              {change.from !== undefined && change.to !== undefined && (
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
+                    <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
+                    <div className="break-words">{formatValue(change.from)}</div>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+                    <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
+                    <div className="break-words">{formatValue(change.to)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+      </div>
+    );
+  }
+
+  // For login events
+  if (action === "LOGIN") {
+    return (
+      <div className="space-y-1 max-w-md">
+        <div className="text-xs">
+          <span className="font-medium">Email:</span> {details.email}
+        </div>
+        <div className="text-xs">
+          <span className="font-medium">Method:</span> {details.method}
+        </div>
+      </div>
+    );
+  }
+
+  // For user role updates
+  if (details.type === "USER_ROLE_UPDATED") {
+    return (
+      <div className="space-y-1 max-w-md">
+        <div className="text-xs">
+          <span className="font-medium">Type:</span> {details.type}
+        </div>
+        <div className="text-xs">
+          <span className="font-medium">New Role:</span> {details.newRole}
+        </div>
+        <div className="text-xs">
+          <span className="font-medium">Old Role:</span> {details.oldRole}
+        </div>
+        {details.targetUserEmail && (
+          <div className="text-xs">
+            <span className="font-medium">Target User Email:</span> {details.targetUserEmail}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // For all other types, show a simplified version without timestamps and IDs
+  return (
+    <div className="max-w-md overflow-hidden">
+      <div className="text-xs space-y-1">
+        {Object.entries(details)
+          .filter(([key]) => !key.includes('timestamp') && !key.includes('Id') && key !== 'type')
+          .map(([key, value]) => (
+            <div key={key}>
+              <span className="font-medium">{formatKey(key)}:</span> {formatValue(value)}
+            </div>
+          ))}
+        {details.type && (
+          <div>
+            <span className="font-medium">Type:</span> {details.type}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Helper function to format keys for display
+function formatKey(key: string): string {
+  // Convert camelCase or snake_case to Title Case with spaces
+  return key
+    .replace(/([A-Z])/g, ' $1') // Insert space before capital letters
+    .replace(/_/g, ' ') // Replace underscores with spaces
+    .replace(/^\w/, c => c.toUpperCase()) // Capitalize first letter
+    .trim();
+}
+
+// Helper function to format values for display
+function formatValue(value: any): React.ReactNode {
+  if (value === null || value === undefined) return <span className="text-muted-foreground">None</span>;
+  
+  // Handle JSON strings that need to be parsed
+  if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+    try {
+      const parsed = JSON.parse(value);
+      return formatValue(parsed);
+    } catch (e) {
+      // If it's not valid JSON, just return the string
+      return value;
+    }
+  }
+  
+  if (typeof value === 'object') {
+    if (Object.keys(value).length === 0) return <span className="text-muted-foreground">Empty</span>;
+    
+    // Special handling for custom fields
+    if (typeof value === 'object') {
+      return (
+        <div className="space-y-1">
+          {Object.entries(value)
+            .map(([k, v]) => {
+              const displayKey = formatCustomFieldKey(k);
+              if (!displayKey) return null; // Skip entries with empty keys
+              return (
+                <div key={k} className="text-xs">
+                  <span className="font-medium">{displayKey}:</span> {typeof v === 'object' ? formatValue(v) : String(v)}
+                </div>
+              );
+            })
+            .filter(Boolean) // Filter out null entries
+          }
+        </div>
+      );
+    }
+    
+    // If it's a simple object with few properties, format it inline
+    if (Object.keys(value).length <= 3) {
+      return Object.entries(value).map(([k, v]) => (
+        <span key={k} className="whitespace-nowrap">
+          {formatKey(k)}: {typeof v === 'string' ? v : JSON.stringify(v)}
+        </span>
+      )).reduce((prev, curr, i) => (
+        <>{prev}{i > 0 && ', '}{curr}</>
+      ), <></>);
+    }
+    
+    // Otherwise return a simplified representation
+    return <span className="text-muted-foreground">{JSON.stringify(value).substring(0, 50)}...</span>;
+  }
+  
+  return String(value);
+}
+
+// Helper function to format custom field keys in a more readable way
+function formatCustomFieldKey(key: string): string {
+  // Map common custom field codes to readable names
+  const customFieldMap: Record<string, string> = {
+    Color: "Color",
+    Unit_Type: "Unit Type",
+    "Tool Size": "Tool Size",
+    "Power Type": "Power Type",
+    Voltage: "Voltage",
+    Warranty_Period: "Warranty Period"
+  };
+
+  // If it's a cf_XX format, we don't want to display it
+  if (key.match(/^cf_\d+$/)) {
+    return "";
+  }
+
+  return customFieldMap[key] || formatKey(key);
+}
+
 // Key for localStorage
 const SETTINGS_FORM_KEY = "azure_settings_form";
 
@@ -436,10 +687,25 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          <TabsList className="border bg-background">
+            <TabsTrigger 
+              value="integrations" 
+              className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:border-b-[3px] data-[state=active]:border-primary"
+            >
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:border-b-[3px] data-[state=active]:border-primary"
+            >
+              Users
+            </TabsTrigger>
+            <TabsTrigger 
+              value="audit" 
+              className="data-[state=active]:bg-primary/15 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:border-b-[3px] data-[state=active]:border-primary"
+            >
+              Audit Logs
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="integrations" className="space-y-4">
@@ -601,9 +867,7 @@ export default function SettingsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-2">
-                          <pre className="text-xs text-muted-foreground">
-                            {JSON.stringify(log.details, null, 2)}
-                          </pre>
+                          <AuditLogDetails details={log.details} action={log.action} />
                         </td>
                       </tr>
                     ))}

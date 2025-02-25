@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LocationSelector } from "@/components/LocationSelector";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Trash, FolderPlus, FolderTree } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface LocationCreationDialogProps {
   isOpen: boolean;
@@ -128,137 +128,199 @@ export function LocationCreationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Create New Location</DialogTitle>
           <DialogDescription>
-            {locationType === "root" 
-              ? "Create a parent location with at least one child location" 
-              : "Create a child location under an existing parent"}
+            Add a new location to your inventory system
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-4">
-            <div>
-              <Label>Location Type</Label>
-              <RadioGroup
-                value={locationType}
-                onValueChange={(value: LocationType) => {
-                  setLocationType(value);
-                  if (value === "root") {
-                    setParentId(null);
-                    setChildLocations([{ name: "", description: "" }]); // Reset with one empty child
+        
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <div className="w-full">
+            <div className="grid w-full grid-cols-2 mb-4 p-1 bg-muted border border-border rounded-md">
+              <button
+                type="button"
+                onClick={() => setLocationType("root")}
+                className={`flex items-center justify-center gap-2 py-2 px-4 rounded-sm transition-all ${
+                  locationType === "root" 
+                    ? "bg-white shadow-md border-2 border-blue-500 font-medium text-blue-600" 
+                    : "hover:bg-muted-foreground/10"
+                }`}
+              >
+                <FolderTree className={`h-4 w-4 ${locationType === "root" ? "text-blue-500" : ""}`} />
+                <span>Parent Location</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocationType("child");
+                  if (initialParentId) {
+                    setParentId(initialParentId);
                   }
                 }}
-                className="flex flex-col space-y-2 mt-2"
+                className={`flex items-center justify-center gap-2 py-2 px-4 rounded-sm transition-all ${
+                  locationType === "child" 
+                    ? "bg-white shadow-md border-2 border-blue-500 font-medium text-blue-600" 
+                    : "hover:bg-muted-foreground/10"
+                }`}
               >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="root" id="root" />
-                  <Label htmlFor="root" className="cursor-pointer">Parent Location (Requires Children)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="child" id="child" />
-                  <Label htmlFor="child" className="cursor-pointer">Child Location (Has Parent)</Label>
-                </div>
-              </RadioGroup>
+                <FolderPlus className={`h-4 w-4 ${locationType === "child" ? "text-blue-500" : ""}`} />
+                <span>Child Location</span>
+              </button>
             </div>
-
-            {locationType === "child" && (
-              <div className="space-y-2">
-                <Label>Parent Location</Label>
-                <LocationSelector
-                  value={parentId || ""}
-                  onChange={(id) => setParentId(id)}
-                  className="max-h-[200px] overflow-y-auto border rounded-md"
-                  required
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="name">Location Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter location name"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter location description"
-              />
-            </div>
-
+            
             {locationType === "root" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Child Locations (Required)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addChildLocation}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Child Location
-                  </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="parent-name" className="text-sm font-medium">
+                    Parent Location Name
+                  </Label>
+                  <Input
+                    id="parent-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter parent location name"
+                    required
+                  />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="parent-description" className="text-sm font-medium">
+                    Description (optional)
+                  </Label>
+                  <Input
+                    id="parent-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter location description"
+                  />
+                </div>
+
+                <Separator className="my-4" />
                 
-                {childLocations.map((child, index) => (
-                  <div key={index} className="space-y-2 p-4 border rounded-md relative">
-                    {childLocations.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-2 top-2 text-destructive"
-                        onClick={() => removeChildLocation(index)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <div className="space-y-2">
-                      <Label>Child Location Name</Label>
-                      <Input
-                        value={child.name}
-                        onChange={(e) => updateChildLocation(index, "name", e.target.value)}
-                        placeholder="Enter child location name"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Child Location Description (optional)</Label>
-                      <Input
-                        value={child.description}
-                        onChange={(e) => updateChildLocation(index, "description", e.target.value)}
-                        placeholder="Enter child location description"
-                      />
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Child Locations</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addChildLocation}
+                      className="h-8 border-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" />
+                      Add Child
+                    </Button>
                   </div>
-                ))}
+                  
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {childLocations.map((child, index) => (
+                      <div 
+                        key={index} 
+                        className="space-y-3 p-3 border-2 rounded-md bg-muted/30 relative hover:border-muted-foreground/50 transition-colors"
+                      >
+                        {childLocations.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1 h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            onClick={() => removeChildLocation(index)}
+                          >
+                            <Trash className="h-3.5 w-3.5" />
+                            <span className="sr-only">Remove</span>
+                          </Button>
+                        )}
+                        
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Name</Label>
+                          <Input
+                            value={child.name}
+                            onChange={(e) => updateChildLocation(index, "name", e.target.value)}
+                            placeholder="Enter child location name"
+                            className="h-8"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-xs font-medium">Description (optional)</Label>
+                          <Input
+                            value={child.description}
+                            onChange={(e) => updateChildLocation(index, "description", e.target.value)}
+                            placeholder="Enter description"
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {locationType === "child" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Parent Location</Label>
+                  <div className="border rounded-md">
+                    <LocationSelector
+                      value={parentId || ""}
+                      onChange={(id) => setParentId(id)}
+                      className="h-[200px] overflow-y-auto"
+                      required
+                    />
+                  </div>
+                  {!parentId && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Select a parent location from the list above
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="child-name" className="text-sm font-medium">
+                    Child Location Name
+                  </Label>
+                  <Input
+                    id="child-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter child location name"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="child-description" className="text-sm font-medium">
+                    Description (optional)
+                  </Label>
+                  <Input
+                    id="child-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter location description"
+                  />
+                </div>
               </div>
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
               disabled={isSubmitting}
+              className="border-2 hover:bg-muted/50"
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || isSubmitting}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-4 border-2 border-primary"
             >
               {isSubmitting ? "Creating..." : "Create Location"}
             </Button>
