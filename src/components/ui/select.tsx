@@ -43,6 +43,7 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
+      style={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))' }}
       {...props}
     >
       <SelectPrimitive.Viewport
@@ -51,6 +52,7 @@ const SelectContent = React.forwardRef<
           position === "popper" &&
             "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
         )}
+        style={{ backgroundColor: 'hsl(var(--popover))' }}
       >
         {children}
       </SelectPrimitive.Viewport>

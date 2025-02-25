@@ -26,6 +26,8 @@ interface Location {
   level: number;
   fullPath: string;
   children: Location[];
+  itemCount: number;
+  directItemCount: number;
 }
 
 function LocationNode({ 
@@ -69,7 +71,14 @@ function LocationNode({
         </button>
         <FolderIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="flex-1 min-w-0">
-          <div className="truncate">{location.name}</div>
+          <div className="truncate flex items-center">
+            <span>{location.name}</span>
+            {location.itemCount > 0 && (
+              <span className="text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full ml-2">
+                {location.itemCount} {location.itemCount === 1 ? 'item' : 'items'}
+              </span>
+            )}
+          </div>
           {location.description && (
             <div className="text-sm text-muted-foreground truncate">
               {location.description}
@@ -343,7 +352,7 @@ export default function LocationsPage() {
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
-          setParentIdForAdd(null);
+          setParentIdForAdd(undefined);
         }}
         onSubmit={handleCreate}
         parentId={parentIdForAdd}
@@ -354,7 +363,7 @@ export default function LocationsPage() {
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);
-            setLocationToEdit(null);
+            setLocationToEdit(undefined);
           }}
           onSubmit={handleEdit}
           location={locationToEdit}
@@ -382,7 +391,7 @@ export default function LocationsPage() {
               <AlertDialogAction asChild>
                 <Button
                   variant="destructive"
-                  onClick={() => handleDelete(locationToDelete.id)}
+                  onClick={() => handleDelete(locationToDelete)}
                 >
                   Delete
                 </Button>

@@ -1,0 +1,10 @@
+---
+description: Best practices for React AzureAD Integration
+globs: **/*.{ts,tsx,js,jsx}
+alwaysApply: false
+---
+- Implement proper error handling for authentication flows
+- Use the `useMsal` hook for managing authentication state
+- Securely store and manage client secrets
+- Implement silent token renewal to improve user experience
+- Use Azure AD groups for role-based access control implementation

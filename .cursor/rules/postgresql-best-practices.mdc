@@ -1,0 +1,10 @@
+---
+description: Best practices for PostgreSQL database management
+globs: **/*.sql
+alwaysApply: false
+---
+- Use indexes for frequently queried columns to improve performance
+- Implement proper transaction management to ensure data integrity
+- Regularly backup your database and test restoration procedures
+- Use prepared statements to prevent SQL injection attacks
+- Optimize queries by avoiding unnecessary joins and subqueries

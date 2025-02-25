@@ -1,0 +1,10 @@
+---
+description: Best practices for QR code generation in web applications
+globs: **/*.{ts,tsx,js,jsx}
+alwaysApply: false
+---
+- Use a reliable QR code library like `qrcode.react` for React applications
+- Ensure QR codes are generated with appropriate error correction levels
+- Implement proper error handling for QR code generation
+- Provide options for customizing QR code appearance (color, size, etc.)
+- Ensure QR codes are accessible and can be easily scanned by mobile devices

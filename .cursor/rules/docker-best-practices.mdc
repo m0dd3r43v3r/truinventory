@@ -1,0 +1,10 @@
+---
+description: Best practices for Docker containerization
+globs: **/Dockerfile, **/docker-compose.yml
+alwaysApply: false
+---
+- Use multi-stage builds to reduce image size
+- Keep your Dockerfiles clean and well-commented
+- Use environment variables for configuration
+- Implement proper health checks for your containers
+- Regularly update and patch your base images

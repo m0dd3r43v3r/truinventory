@@ -185,9 +185,9 @@ export default function DashboardPage() {
                       {category.name}
                     </p>
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <div className="flex-1 bg-secondary h-2 rounded-full overflow-hidden">
+                      <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-primary h-full rounded-full"
+                          className="bg-blue-500 dark:bg-blue-400 h-full rounded-full"
                           style={{
                             width: `${(category.itemCount / stats.totalItems) * 100}%`,
                           }}
@@ -216,9 +216,9 @@ export default function DashboardPage() {
                       {location.name}
                     </p>
                     <div className="flex items-center text-sm text-muted-foreground">
-                      <div className="flex-1 bg-secondary h-2 rounded-full overflow-hidden">
+                      <div className="flex-1 bg-muted h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-primary h-full rounded-full"
+                          className="bg-blue-500 dark:bg-blue-400 h-full rounded-full"
                           style={{
                             width: `${(location.itemCount / stats.totalItems) * 100}%`,
                           }}

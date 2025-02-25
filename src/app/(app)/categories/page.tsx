@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, PencilIcon, Trash2Icon } from "lucide-react";
+import { Plus, PencilIcon, Trash2Icon, InfoIcon } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -33,6 +33,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { CustomFieldsManager } from "@/components/CustomFieldsManager";
+import { PermissionGate } from "@/components/PermissionGate";
+import { Permission } from "@/lib/permissions";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Category {
   id: string;
@@ -213,7 +216,7 @@ export default function CategoriesPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to save category. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save category. Please try again.",
       });
     }
   };
@@ -263,20 +266,42 @@ export default function CategoriesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Categories</h1>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Button>
+        <PermissionGate 
+          permission={Permission.EDIT}
+          fallback={
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button disabled title="You need edit permissions to add categories">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Category
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>You need edit permissions to add categories</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
+        >
+          <Button onClick={() => {
+            setCategoryToEdit(undefined);
+            setIsModalOpen(true);
+          }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        </PermissionGate>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
+      <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
-              <TableHead className="hidden md:table-cell">Description</TableHead>
-              <TableHead className="hidden sm:table-cell">Custom Fields</TableHead>
-              <TableHead className="hidden sm:table-cell">Items</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Custom Fields</TableHead>
+              <TableHead>Items</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -296,73 +321,90 @@ export default function CategoriesPage() {
             ) : (
               categories.map((category) => (
                 <TableRow key={category.id}>
+                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell>{category.description}</TableCell>
+                  <TableCell>{category.customFields?.length || 0}</TableCell>
+                  <TableCell>{category._count?.items || 0}</TableCell>
                   <TableCell>
-                    <div>
-                      <div>{category.name}</div>
-                      <div className="text-sm text-muted-foreground sm:hidden">
-                        {category.customFields.length} fields • {category._count?.items || 0} items
-                      </div>
-                      {category.description && (
-                        <div className="text-sm text-muted-foreground md:hidden">
-                          {category.description}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{category.description}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{category.customFields.length} fields</TableCell>
-                  <TableCell className="hidden sm:table-cell">{category._count?.items || 0} items</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setCategoryToEdit(category);
-                          setIsModalOpen(true);
-                        }}
+                    <div className="flex items-center gap-2">
+                      <PermissionGate 
+                        permission={Permission.EDIT}
+                        fallback={
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" disabled title="You need edit permissions to modify categories">
+                                  <PencilIcon className="h-4 w-4" />
+                                  <span className="sr-only">Edit</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>You need edit permissions to modify categories</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        }
                       >
-                        <PencilIcon className="h-4 w-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setCategoryToEdit(category);
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      </PermissionGate>
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            disabled={!!category._count?.items}
-                            title={category._count?.items ? "Cannot delete category with items" : "Delete category"}
-                          >
-                            <Trash2Icon className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle asChild>
-                              <h2>Are you sure?</h2>
-                            </AlertDialogTitle>
-                            <AlertDialogDescription asChild>
-                              <p>This action cannot be undone. This will permanently delete the category.</p>
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel asChild>
-                              <Button variant="outline">Cancel</Button>
-                            </AlertDialogCancel>
-                            <AlertDialogAction asChild>
-                              <Button
-                                variant="destructive"
+                      <PermissionGate 
+                        permission={Permission.EDIT}
+                        fallback={
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" disabled className="text-destructive" title="You need edit permissions to delete categories">
+                                  <Trash2Icon className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>You need edit permissions to delete categories</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        }
+                      >
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                            >
+                              <Trash2Icon className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the category. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
                                 onClick={() => handleDelete(category.id)}
                               >
                                 Delete
-                              </Button>
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </PermissionGate>
                     </div>
                   </TableCell>
                 </TableRow>

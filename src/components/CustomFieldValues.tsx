@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -77,7 +77,7 @@ export function CustomFieldValues({
 
           {field.type === "boolean" && (
             <div className="flex items-center space-x-2">
-              <Switch
+              <Checkbox
                 id={`field-${field.id}`}
                 checked={values[field.id] || false}
                 onCheckedChange={(checked) => handleChange(field.id, checked)}

@@ -58,3 +58,52 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Ensure dialog components have solid backgrounds */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.95) !important;
+}
+
+[data-radix-dialog-content] {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Fix transparent dropdown and select menus */
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+[data-radix-popper-content] {
+  background-color: hsl(var(--popover)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
+/* Ensure select items have solid backgrounds */
+[data-radix-select-item],
+[data-radix-dropdown-menu-item] {
+  background-color: transparent !important;
+}
+
+[data-radix-select-item][data-highlighted],
+[data-radix-dropdown-menu-item][data-highlighted] {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* Fix for select viewport */
+[data-radix-select-viewport],
+[data-radix-dropdown-menu-viewport] {
+  background-color: hsl(var(--popover)) !important;
+}
+
+/* Improve switch visibility in dark mode */
+.dark [data-state="unchecked"].peer {
+  border-color: hsl(var(--muted-foreground)) !important;
+  background-color: transparent !important;
+}
+
+.dark [data-state="unchecked"] [data-radix-switch-thumb] {
+  background-color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark [data-state="checked"].peer {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+}

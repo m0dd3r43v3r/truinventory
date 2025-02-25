@@ -144,7 +144,8 @@ model Settings {
 
 enum Role {
   ADMIN
-  MANAGER
+  EDITOR
+  READ_ONLY
   USER
 }
 

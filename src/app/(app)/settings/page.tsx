@@ -20,7 +20,7 @@ interface User {
   id: string;
   name: string | null;
   email: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "EDITOR" | "READ_ONLY" | "USER";
   createdAt: string;
 }
 
@@ -28,7 +28,7 @@ interface UserFormData {
   name: string;
   email: string;
   password: string;
-  role: "ADMIN" | "USER";
+  role: "ADMIN" | "EDITOR" | "READ_ONLY" | "USER";
 }
 
 interface AuditLog {
@@ -348,7 +348,10 @@ export default function SettingsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(userFormData),
+        body: JSON.stringify({
+          ...userFormData,
+          oldRole: selectedUser.role
+        }),
       });
 
       if (!response.ok) {
@@ -736,10 +739,12 @@ export default function SettingsPage() {
               <label className="text-sm font-medium">Role</label>
               <select
                 value={userFormData.role}
-                onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as "ADMIN" | "USER" })}
+                onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as "ADMIN" | "EDITOR" | "READ_ONLY" | "USER" })}
                 className="mt-1 block w-full rounded-md border bg-background px-3 py-2"
               >
-                <option value="USER">User</option>
+                <option value="READ_ONLY">Read Only</option>
+                <option value="EDITOR">Editor</option>
+                <option value="USER">User (Legacy)</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>
@@ -798,11 +803,13 @@ export default function SettingsPage() {
               <label className="text-sm font-medium">Role</label>
               <select
                 value={userFormData.role}
-                onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as "ADMIN" | "USER" })}
+                onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value as "ADMIN" | "EDITOR" | "READ_ONLY" | "USER" })}
                 className="mt-1 block w-full rounded-md border bg-background px-3 py-2"
                 disabled={selectedUser?.id === session?.user.id}
               >
-                <option value="USER">User</option>
+                <option value="READ_ONLY">Read Only</option>
+                <option value="EDITOR">Editor</option>
+                <option value="USER">User (Legacy)</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>

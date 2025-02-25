@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CustomField {
   id?: string;
@@ -121,7 +121,7 @@ export function CustomFieldsManager({ fields, onChange }: CustomFieldsManagerPro
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch
+                <Checkbox
                   id={`required-${fieldIndex}`}
                   checked={field.required}
                   onCheckedChange={(checked) =>

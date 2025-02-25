@@ -47,6 +47,8 @@ import { EditItemModal } from "@/components/EditItemModal";
 import { CustomFieldValues } from "@/components/CustomFieldValues";
 import { LocationSelector } from "@/components/LocationSelector";
 import { LocationCreationDialog } from "@/components/LocationCreationDialog";
+import { PermissionGate } from "@/components/PermissionGate";
+import { Permission } from "@/lib/permissions";
 
 interface CustomField {
   id: string;
@@ -677,11 +679,15 @@ export default function InventoryPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Inventory</h1>
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Item
-        </Button>
+        <h1 className="text-3xl font-bold">Inventory</h1>
+        <div className="flex gap-2">
+          <PermissionGate permission={Permission.EDIT}>
+            <Button onClick={() => setIsAddModalOpen(true)}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </PermissionGate>
+        </div>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -808,63 +814,65 @@ export default function InventoryPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setItemToEdit(item);
-                      }}
-                    >
-                      <PencilIcon className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setItemToDelete(item.id);
-                          }}
-                        >
-                          <Trash2Icon className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle asChild>
-                            <h2>Are you sure?</h2>
-                          </AlertDialogTitle>
-                          <AlertDialogDescription asChild>
-                            <p>
-                              This action cannot be undone. This will permanently delete the item
-                              and remove it from our servers.
-                            </p>
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel asChild>
-                            <Button variant="outline">Cancel</Button>
-                          </AlertDialogCancel>
-                          <AlertDialogAction asChild>
-                            <Button
-                              variant="destructive"
-                              onClick={(e: React.MouseEvent) => {
-                                e.stopPropagation();
-                                handleDelete(item.id);
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <PermissionGate permission={Permission.EDIT}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setItemToEdit(item);
+                        }}
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                        <span className="sr-only">Edit</span>
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemToDelete(item.id);
+                            }}
+                          >
+                            <Trash2Icon className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle asChild>
+                              <h2>Are you sure?</h2>
+                            </AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                              <p>
+                                This action cannot be undone. This will permanently delete the item
+                                and remove it from our servers.
+                              </p>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel asChild>
+                              <Button variant="outline">Cancel</Button>
+                            </AlertDialogCancel>
+                            <AlertDialogAction asChild>
+                              <Button
+                                variant="destructive"
+                                onClick={(e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handleDelete(item.id);
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </PermissionGate>
 
                     <QRCodeDialog
                       trigger={
