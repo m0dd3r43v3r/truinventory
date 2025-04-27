@@ -76,6 +76,27 @@
   border: 1px solid hsl(var(--border)) !important;
 }
 
+/* Fix for toast notifications to ensure solid backgrounds */
+[data-radix-toast-root] {
+  background-color: hsl(var(--background)) !important;
+}
+
+[data-radix-toast-root][data-variant="success"] {
+  background-color: hsl(142, 76%, 95%) !important;
+  border-color: hsl(142, 72%, 29%) !important;
+}
+
+.dark [data-radix-toast-root][data-variant="success"] {
+  background-color: hsl(142, 72%, 12%) !important;
+  border-color: hsl(142, 72%, 29%) !important;
+  color: hsl(142, 76%, 95%) !important;
+}
+
+[data-radix-toast-root][data-variant="destructive"] {
+  background-color: hsl(var(--destructive)) !important;
+  color: hsl(var(--destructive-foreground)) !important;
+}
+
 /* Ensure select items have solid backgrounds */
 [data-radix-select-item],
 [data-radix-dropdown-menu-item] {

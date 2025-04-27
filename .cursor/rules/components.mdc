@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Components Guide
+
+Reusable React components are located in [src/components/](mdc:src/components/). This directory includes UI elements, dialogs, modals, and layout components used throughout the app.
+
+For example, the sidebar navigation is implemented in [src/components/Sidebar.tsx](mdc:src/components/Sidebar.tsx), which provides the main navigation and user controls.
+
+UI primitives and shared elements are further organized under [src/components/ui/](mdc:src/components/ui/).

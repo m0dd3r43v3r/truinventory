@@ -78,6 +78,27 @@ export async function PATCH(
       return new NextResponse("Item not found", { status: 404 });
     }
 
+    // Check if any changes were actually made
+    const changes = {
+      name: name !== currentItem.name ? { from: currentItem.name, to: name } : undefined,
+      description: description !== currentItem.description ? { from: currentItem.description, to: description } : undefined,
+      quantity: quantity !== currentItem.quantity ? { from: currentItem.quantity, to: quantity } : undefined,
+      categoryId: categoryId !== currentItem.categoryId ? { from: currentItem.categoryId, to: categoryId } : undefined,
+      locationId: locationId !== currentItem.locationId ? { from: currentItem.locationId, to: locationId } : undefined,
+      customFields: JSON.stringify(customFields) !== JSON.stringify(currentItem.customFields) ? 
+        { 
+          from: currentItem.customFields || {}, 
+          to: customFields || {} 
+        } : undefined,
+    };
+
+    // Check if any changes were made
+    const hasChanges = Object.values(changes).some(change => change !== undefined);
+    
+    if (!hasChanges) {
+      return new NextResponse("No changes detected", { status: 400 });
+    }
+
     // If category is being changed, validate new custom fields
     if (categoryId && categoryId !== currentItem.categoryId) {
       const category = await db.category.findUnique({
@@ -137,14 +158,7 @@ export async function PATCH(
         itemId: id,
         details: {
           type: "ITEM_UPDATED",
-          changes: {
-            name: name !== currentItem.name ? { from: currentItem.name, to: name } : undefined,
-            description: description !== currentItem.description ? { from: currentItem.description, to: description } : undefined,
-            quantity: quantity !== currentItem.quantity ? { from: currentItem.quantity, to: quantity } : undefined,
-            categoryId: categoryId !== currentItem.categoryId ? { from: currentItem.categoryId, to: categoryId } : undefined,
-            locationId: locationId !== currentItem.locationId ? { from: currentItem.locationId, to: locationId } : undefined,
-            customFields: JSON.stringify(customFields) !== JSON.stringify(currentItem.customFields) ? { from: currentItem.customFields, to: customFields } : undefined,
-          },
+          changes,
           timestamp: new Date().toISOString(),
         },
       },

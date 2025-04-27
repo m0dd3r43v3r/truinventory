@@ -62,22 +62,43 @@ export function EditItemModal({
     locationId: "",
     customFields: {},
   });
+  const [originalData, setOriginalData] = useState<EditItemFormData | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const [categoryFields, setCategoryFields] = useState<CustomField[]>([]);
 
   // Initialize form data when item changes
   useEffect(() => {
     if (item) {
-      setFormData({
+      const initialData = {
         name: item.name,
         description: item.description || "",
         quantity: item.quantity,
         categoryId: item.categoryId,
         locationId: item.locationId,
         customFields: item.customFields || {},
-      });
+      };
+      setFormData(initialData);
+      setOriginalData(initialData);
+      setHasChanges(false);
     }
   }, [item]);
+
+  // Check for changes whenever form data changes
+  useEffect(() => {
+    if (!originalData) return;
+    
+    // Compare current form data with original data
+    const isChanged = 
+      formData.name !== originalData.name ||
+      formData.description !== originalData.description ||
+      formData.quantity !== originalData.quantity ||
+      formData.categoryId !== originalData.categoryId ||
+      formData.locationId !== originalData.locationId ||
+      JSON.stringify(formData.customFields) !== JSON.stringify(originalData.customFields);
+    
+    setHasChanges(isChanged);
+  }, [formData, originalData]);
 
   // Update custom fields when category changes
   useEffect(() => {
@@ -113,10 +134,23 @@ export function EditItemModal({
       });
       onClose();
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update item. Please try again.";
+      
+      // Handle the specific error for no changes detected
+      if (errorMessage.includes("No changes detected")) {
+        toast({
+          variant: "default",
+          title: "No Changes",
+          description: "No changes were detected. The item was not updated.",
+        });
+        onClose();
+        return;
+      }
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to update item. Please try again.",
+        description: errorMessage,
       });
     }
   };
@@ -127,6 +161,11 @@ export function EditItemModal({
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Item</DialogTitle>
+            {hasChanges && (
+              <p className="text-sm text-muted-foreground mt-1">
+                You have unsaved changes
+              </p>
+            )}
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -226,7 +265,9 @@ export function EditItemModal({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={!hasChanges}>
+              Save Changes
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

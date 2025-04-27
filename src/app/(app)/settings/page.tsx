@@ -10,6 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 
+// Define a simple style for text shadow
+const textShadowStyle = {
+  textShadow: "0px 0px 1px rgba(0, 0, 0, 0.3)"
+};
+
 interface Settings {
   azureClientId: string;
   azureTenantId: string;
@@ -45,62 +50,156 @@ interface AuditLog {
 }
 
 // Component to format audit log details in a more readable way
-function AuditLogDetails({ details, action }: { details: any; action: string }) {
+function AuditLogDetails({ details, action, customFieldsMapping = {} }: { 
+  details: any; 
+  action: string; 
+  customFieldsMapping?: Record<string, { name: string, categoryName: string }> 
+}) {
   if (!details) return <span className="text-muted-foreground">No details available</span>;
+  
+  // Define text shadow style for better readability
+  const textShadowStyle = { textShadow: '0px 0px 1px rgba(0, 0, 0, 0.3)' };
+  
+  // Format value for display
+  const formatValue = (value: any) => {
+    if (value === null || value === undefined) return <span className="text-muted-foreground">None</span>;
+    
+    // Handle JSON strings that need to be parsed
+    if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+      try {
+        const parsed = JSON.parse(value);
+        return formatValue(parsed);
+      } catch (e) {
+        // If it's not valid JSON, just return the string
+        return value;
+      }
+    }
+    
+    if (typeof value === 'object') {
+      if (Object.keys(value).length === 0) return <span className="text-muted-foreground">Empty</span>;
+      
+      // Special handling for custom fields
+      if (typeof value === 'object') {
+        return (
+          <div className="space-y-1">
+            {Object.entries(value)
+              .map(([k, v]) => {
+                const displayKey = formatCustomFieldKey(k);
+                if (!displayKey) return null; // Skip entries with empty keys
+                return (
+                  <div key={k} className="text-xs">
+                    <span className="font-medium">{displayKey}:</span> {typeof v === 'object' ? formatValue(v) : String(v)}
+                  </div>
+                );
+              })
+              .filter(Boolean) // Filter out null entries
+            }
+          </div>
+        );
+      }
+      
+      // If it's a simple object with few properties, format it inline
+      if (Object.keys(value).length <= 3) {
+        return Object.entries(value).map(([k, v]) => (
+          <span key={k} className="whitespace-nowrap">
+            {formatKey(k)}: {typeof v === 'string' ? v : JSON.stringify(v)}
+          </span>
+        )).reduce((prev, curr, i) => (
+          <>{prev}{i > 0 && ', '}{curr}</>
+        ), <></>);
+      }
+      
+      // Otherwise return a simplified representation
+      return <span className="text-muted-foreground">{JSON.stringify(value).substring(0, 50)}...</span>;
+    }
+    
+    return String(value);
+  };
+
+  // Custom component to display custom field changes
+  function CustomFieldChanges({ 
+    from, 
+    to 
+  }: { 
+    from: Record<string, any>; 
+    to: Record<string, any>; 
+  }) {
+    // Get all field IDs that exist in either from or to
+    const allFieldIds = [...new Set([...Object.keys(from || {}), ...Object.keys(to || {})])];
+    
+    if (allFieldIds.length === 0) {
+      return (
+        <div className="text-xs pl-2">No custom field changes</div>
+      );
+    }
+    
+    // Define styles for the labels with text stroke/outline
+    const previousLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
+    const newLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
+    return (
+      <div className="space-y-2">
+        {allFieldIds.map(fieldId => {
+          // Use the mapping from the API if available, otherwise fall back to formatCustomFieldKey
+          const fieldName = customFieldsMapping[fieldId]?.name || formatCustomFieldKey(fieldId) || fieldId;
+          const fromValue = from?.[fieldId] ?? "Not set";
+          const toValue = to?.[fieldId] ?? "Not set";
+          
+          // Only show fields that have changed
+          if (JSON.stringify(fromValue) === JSON.stringify(toValue)) {
+            return null;
+          }
+          
+          return (
+            <div key={fieldId} className="grid grid-cols-2 gap-2 mt-1">
+              <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
+                <div className="text-red-700 dark:text-red-400 font-medium text-[10px] mb-1" style={previousLabelStyle}>Previous</div>
+                <div className="text-xs text-black dark:text-gray-100 font-medium">
+                  <span className="font-semibold">{fieldName}:</span> {String(fromValue)}
+                </div>
+              </div>
+              <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+                <div className="text-green-700 dark:text-green-400 font-medium text-[10px] mb-1" style={newLabelStyle}>New</div>
+                <div className="text-xs text-black dark:text-gray-100 font-medium">
+                  <span className="font-semibold">{fieldName}:</span> {String(toValue)}
+                </div>
+              </div>
+            </div>
+          );
+        }).filter(Boolean)}
+      </div>
+    );
+  }
 
   // Handle different types of audit logs based on the action and content
   if (action === "UPDATE" && details.changes) {
     // Special handling for ITEM_UPDATED with customFields
     if (details.type === "ITEM_UPDATED" && details.changes.customFields) {
+      // Define styles for the labels with text stroke/outline
+      const previousLabelStyle = {
+        textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+        WebkitTextStroke: '0.2px black'
+      };
+      
+      const newLabelStyle = {
+        textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+        WebkitTextStroke: '0.2px black'
+      };
+      
       return (
         <div className="space-y-2 max-w-md">
           <div className="text-xs font-medium">Custom Fields:</div>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
-              <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
-              {details.changes.customFields.from && typeof details.changes.customFields.from === 'object' ? (
-                Object.entries(details.changes.customFields.from)
-                  .map(([k, v]) => {
-                    const displayKey = formatCustomFieldKey(k);
-                    if (!displayKey) return null; // Skip entries with empty keys
-                    return (
-                      <div key={k} className="text-xs">
-                        <span className="font-medium">{displayKey}:</span> {String(v)}
-                      </div>
-                    );
-                  })
-                  .filter(Boolean) // Filter out null entries
-              ) : details.changes.customFields.from && typeof details.changes.customFields.from === 'string' ? (
-                <div className="break-words">
-                  {formatValue(details.changes.customFields.from)}
-                </div>
-              ) : (
-                <span className="text-muted-foreground">None</span>
-              )}
-            </div>
-            <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
-              <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
-              {details.changes.customFields.to && typeof details.changes.customFields.to === 'object' ? (
-                Object.entries(details.changes.customFields.to)
-                  .map(([k, v]) => {
-                    const displayKey = formatCustomFieldKey(k);
-                    if (!displayKey) return null; // Skip entries with empty keys
-                    return (
-                      <div key={k} className="text-xs">
-                        <span className="font-medium">{displayKey}:</span> {String(v)}
-                      </div>
-                    );
-                  })
-                  .filter(Boolean) // Filter out null entries
-              ) : details.changes.customFields.to && typeof details.changes.customFields.to === 'string' ? (
-                <div className="break-words">
-                  {formatValue(details.changes.customFields.to)}
-                </div>
-              ) : (
-                <span className="text-muted-foreground">None</span>
-              )}
-            </div>
-          </div>
+          <CustomFieldChanges 
+            from={details.changes.customFields.from || {}} 
+            to={details.changes.customFields.to || {}} 
+          />
           
           {/* Show other changes if any */}
           {Object.entries(details.changes)
@@ -111,12 +210,12 @@ function AuditLogDetails({ details, action }: { details: any; action: string }) 
                 {change.from !== undefined && change.to !== undefined && (
                   <div className="grid grid-cols-2 gap-2 mt-1">
                     <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
-                      <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
-                      <div className="break-words">{formatValue(change.from)}</div>
+                      <div className="text-red-700 dark:text-red-400 font-medium text-[10px] mb-1" style={previousLabelStyle}>Previous</div>
+                      <div className="break-words text-black dark:text-gray-100 font-medium">{formatValue(change.from)}</div>
                     </div>
                     <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
-                      <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
-                      <div className="break-words">{formatValue(change.to)}</div>
+                      <div className="text-green-700 dark:text-green-400 font-medium text-[10px] mb-1" style={newLabelStyle}>New</div>
+                      <div className="break-words text-black dark:text-gray-100 font-medium">{formatValue(change.to)}</div>
                     </div>
                   </div>
                 )}
@@ -127,6 +226,17 @@ function AuditLogDetails({ details, action }: { details: any; action: string }) 
     }
     
     // Regular update handling
+    // Define styles for the labels with text stroke/outline
+    const previousLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
+    const newLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
     return (
       <div className="space-y-2 max-w-md">
         {Object.entries(details.changes)
@@ -137,12 +247,12 @@ function AuditLogDetails({ details, action }: { details: any; action: string }) 
               {change.from !== undefined && change.to !== undefined && (
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
-                    <div className="text-red-600 dark:text-red-400 font-medium text-[10px] mb-1">Previous</div>
-                    <div className="break-words">{formatValue(change.from)}</div>
+                    <div className="text-red-700 dark:text-red-400 font-medium text-[10px] mb-1" style={previousLabelStyle}>Previous</div>
+                    <div className="break-words text-black dark:text-gray-100 font-medium">{formatValue(change.from)}</div>
                   </div>
                   <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
-                    <div className="text-green-600 dark:text-green-400 font-medium text-[10px] mb-1">New</div>
-                    <div className="break-words">{formatValue(change.to)}</div>
+                    <div className="text-green-700 dark:text-green-400 font-medium text-[10px] mb-1" style={newLabelStyle}>New</div>
+                    <div className="break-words text-black dark:text-gray-100 font-medium">{formatValue(change.to)}</div>
                   </div>
                 </div>
               )}
@@ -168,20 +278,37 @@ function AuditLogDetails({ details, action }: { details: any; action: string }) 
 
   // For user role updates
   if (details.type === "USER_ROLE_UPDATED") {
+    // Define styles for the labels with text stroke/outline
+    const previousLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
+    const newLabelStyle = {
+      textShadow: '0px 0px 1px rgba(0, 0, 0, 0.8)',
+      WebkitTextStroke: '0.2px black'
+    };
+    
     return (
-      <div className="space-y-1 max-w-md">
-        <div className="text-xs">
-          <span className="font-medium">Type:</span> {details.type}
-        </div>
-        <div className="text-xs">
-          <span className="font-medium">New Role:</span> {details.newRole}
-        </div>
-        <div className="text-xs">
-          <span className="font-medium">Old Role:</span> {details.oldRole}
+      <div className="space-y-2 max-w-md">
+        <div className="text-xs font-medium">User Role Update:</div>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <div className="bg-red-50 dark:bg-red-950/30 p-2 rounded border border-red-200 dark:border-red-800">
+            <div className="text-red-700 dark:text-red-400 font-medium text-[10px] mb-1" style={previousLabelStyle}>Previous</div>
+            <div className="text-xs text-black dark:text-gray-100 font-medium">
+              <span className="font-semibold">Role:</span> {details.oldRole || "Unknown"}
+            </div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-950/30 p-2 rounded border border-green-200 dark:border-green-800">
+            <div className="text-green-700 dark:text-green-400 font-medium text-[10px] mb-1" style={newLabelStyle}>New</div>
+            <div className="text-xs text-black dark:text-gray-100 font-medium">
+              <span className="font-semibold">Role:</span> {details.newRole}
+            </div>
+          </div>
         </div>
         {details.targetUserEmail && (
-          <div className="text-xs">
-            <span className="font-medium">Target User Email:</span> {details.targetUserEmail}
+          <div className="text-xs mt-1">
+            <span className="font-medium">Target User:</span> {details.targetUserEmail}
           </div>
         )}
       </div>
@@ -219,62 +346,6 @@ function formatKey(key: string): string {
     .trim();
 }
 
-// Helper function to format values for display
-function formatValue(value: any): React.ReactNode {
-  if (value === null || value === undefined) return <span className="text-muted-foreground">None</span>;
-  
-  // Handle JSON strings that need to be parsed
-  if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
-    try {
-      const parsed = JSON.parse(value);
-      return formatValue(parsed);
-    } catch (e) {
-      // If it's not valid JSON, just return the string
-      return value;
-    }
-  }
-  
-  if (typeof value === 'object') {
-    if (Object.keys(value).length === 0) return <span className="text-muted-foreground">Empty</span>;
-    
-    // Special handling for custom fields
-    if (typeof value === 'object') {
-      return (
-        <div className="space-y-1">
-          {Object.entries(value)
-            .map(([k, v]) => {
-              const displayKey = formatCustomFieldKey(k);
-              if (!displayKey) return null; // Skip entries with empty keys
-              return (
-                <div key={k} className="text-xs">
-                  <span className="font-medium">{displayKey}:</span> {typeof v === 'object' ? formatValue(v) : String(v)}
-                </div>
-              );
-            })
-            .filter(Boolean) // Filter out null entries
-          }
-        </div>
-      );
-    }
-    
-    // If it's a simple object with few properties, format it inline
-    if (Object.keys(value).length <= 3) {
-      return Object.entries(value).map(([k, v]) => (
-        <span key={k} className="whitespace-nowrap">
-          {formatKey(k)}: {typeof v === 'string' ? v : JSON.stringify(v)}
-        </span>
-      )).reduce((prev, curr, i) => (
-        <>{prev}{i > 0 && ', '}{curr}</>
-      ), <></>);
-    }
-    
-    // Otherwise return a simplified representation
-    return <span className="text-muted-foreground">{JSON.stringify(value).substring(0, 50)}...</span>;
-  }
-  
-  return String(value);
-}
-
 // Helper function to format custom field keys in a more readable way
 function formatCustomFieldKey(key: string): string {
   // Map common custom field codes to readable names
@@ -284,12 +355,20 @@ function formatCustomFieldKey(key: string): string {
     "Tool Size": "Tool Size",
     "Power Type": "Power Type",
     Voltage: "Voltage",
-    Warranty_Period: "Warranty Period"
+    Warranty_Period: "Warranty Period",
+    cf_01: "Color",
+    cf_02: "Size",
+    cf_03: "Material",
+    cf_04: "Unit Type",
+    cf_05: "Warranty Period",
+    cf_06: "Power Type",
+    cf_07: "Voltage",
+    cf_08: "Tool Size"
   };
 
-  // If it's a cf_XX format, we don't want to display it
+  // If it's a cf_XX format, check if we have a mapping for it
   if (key.match(/^cf_\d+$/)) {
-    return "";
+    return customFieldMap[key] || key; // Return the mapping or the original key if no mapping exists
   }
 
   return customFieldMap[key] || formatKey(key);
@@ -337,6 +416,9 @@ export default function SettingsPage() {
 
   // Audit logs state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  
+  // Custom fields mapping state
+  const [customFieldsMapping, setCustomFieldsMapping] = useState<Record<string, { name: string, categoryName: string }>>({});
 
   // Load saved form data from localStorage
   useEffect(() => {
@@ -369,7 +451,22 @@ export default function SettingsPage() {
     }
 
     fetchSettings();
+    fetchCustomFieldsMapping();
   }, [session, status, router]);
+
+  // Fetch custom fields mapping
+  async function fetchCustomFieldsMapping() {
+    try {
+      const response = await fetch("/api/custom-fields/mapping");
+      if (!response.ok) {
+        throw new Error("Failed to fetch custom fields mapping");
+      }
+      const data = await response.json();
+      setCustomFieldsMapping(data);
+    } catch (error) {
+      console.error("Failed to fetch custom fields mapping:", error);
+    }
+  }
 
   // Add beforeunload event listener
   useEffect(() => {
@@ -867,7 +964,11 @@ export default function SettingsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-2">
-                          <AuditLogDetails details={log.details} action={log.action} />
+                          <AuditLogDetails 
+                            action={log.action} 
+                            details={log.details} 
+                            customFieldsMapping={customFieldsMapping} 
+                          />
                         </td>
                       </tr>
                     ))}

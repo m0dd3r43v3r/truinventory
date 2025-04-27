@@ -1,0 +1,12 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Database Schema and Seeding
+
+The database schema is defined in [prisma/schema.prisma](mdc:prisma/schema.prisma). This file contains all models, enums, and relationships for the PostgreSQL database.
+
+To seed the database with initial data, use the script in [prisma/seed.ts](mdc:prisma/seed.ts). Run `npm run prisma:seed` to execute the seeding process.
+
+Migrations and schema changes are managed with Prisma CLI commands (see the README for details).

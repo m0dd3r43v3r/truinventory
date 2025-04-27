@@ -49,6 +49,14 @@ import { LocationSelector } from "@/components/LocationSelector";
 import { LocationCreationDialog } from "@/components/LocationCreationDialog";
 import { PermissionGate } from "@/components/PermissionGate";
 import { Permission } from "@/lib/permissions";
+import { Pagination } from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CustomField {
   id: string;
@@ -416,6 +424,13 @@ export default function InventoryPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [itemToEdit, setItemToEdit] = useState<Item | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -424,6 +439,11 @@ export default function InventoryPage() {
     fetchLocations();
   }, []);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, categoryFilter, locationFilter]);
+
   async function fetchItems() {
     try {
       setIsLoading(true);
@@ -431,11 +451,19 @@ export default function InventoryPage() {
       if (search) searchParams.append("search", search);
       if (categoryFilter) searchParams.append("categoryId", categoryFilter);
       if (locationFilter) searchParams.append("locationId", locationFilter);
+      
+      // Add pagination parameters
+      searchParams.append("page", currentPage.toString());
+      searchParams.append("limit", itemsPerPage.toString());
 
       const response = await fetch(`/api/items?${searchParams.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch items");
       const data = await response.json();
-      setItems(data);
+      
+      // Update state with paginated data
+      setItems(data.items);
+      setTotalItems(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
     } catch (error) {
       console.error("Failed to fetch items:", error);
       toast({
@@ -500,7 +528,7 @@ export default function InventoryPage() {
       fetchItems();
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, categoryFilter, locationFilter]);
+  }, [search, categoryFilter, locationFilter, currentPage, itemsPerPage]);
 
   const handleAddItem = async (data: AddItemFormData) => {
     try {
@@ -516,10 +544,11 @@ export default function InventoryPage() {
         throw new Error("Failed to add item");
       }
 
-      const newItem = await response.json();
-      setItems((prevItems) => [newItem, ...prevItems]);
+      // After adding an item, refresh the items list
+      await fetchItems();
       setIsAddModalOpen(false);
       toast({
+        variant: "success",
         title: "Success",
         description: "Item added successfully",
       });
@@ -550,6 +579,7 @@ export default function InventoryPage() {
       const newCategory = await response.json();
       setCategories((prev) => [...prev, newCategory]);
       toast({
+        variant: "success",
         title: "Success",
         description: "Category created successfully",
       });
@@ -580,6 +610,7 @@ export default function InventoryPage() {
 
       const location = await response.json();
       toast({
+        variant: "success",
         title: "Success",
         description: "Location created successfully",
       });
@@ -609,12 +640,18 @@ export default function InventoryPage() {
       }
 
       toast({
+        variant: "success",
         title: "Success",
         description: "Item deleted successfully",
       });
 
-      // Refresh items
-      fetchItems();
+      // After deleting an item, check if we need to go to the previous page
+      if (items.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        // Otherwise just refresh the current page
+        fetchItems();
+      }
     } catch (error) {
       console.error("Failed to delete item:", error);
       toast({
@@ -653,12 +690,11 @@ export default function InventoryPage() {
         throw new Error(errorData || "Failed to update item");
       }
 
-      const updatedItem = await response.json();
-
-      // Refresh items
+      // Refresh items after editing
       await fetchItems();
       setItemToEdit(null);
       toast({
+        variant: "success",
         title: "Success",
         description: "Item updated successfully",
       });
@@ -674,6 +710,11 @@ export default function InventoryPage() {
 
   const handleRowClick = (itemId: string) => {
     router.push(`/inventory/${itemId}`);
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -902,6 +943,42 @@ export default function InventoryPage() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Add pagination component */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Items per page:</span>
+          <Select
+            value={itemsPerPage.toString()}
+            onValueChange={(value) => {
+              setItemsPerPage(parseInt(value));
+              setCurrentPage(1); // Reset to first page when changing items per page
+            }}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue placeholder={itemsPerPage.toString()} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <Pagination
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
+        />
+        
+        <div className="text-sm text-muted-foreground">
+          Showing {items.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-
+          {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} items
+        </div>
       </div>
 
       <AddItemModal

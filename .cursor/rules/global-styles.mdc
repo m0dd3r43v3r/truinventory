@@ -1,0 +1,10 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Global Styles and Tailwind CSS
+
+Global styles are defined in [src/app/globals.css](mdc:src/app/globals.css). This file includes Tailwind CSS directives and custom CSS variables for theming (light/dark mode).
+
+Tailwind CSS is configured in [tailwind.config.js](mdc:tailwind.config.js) and [tailwind.config.ts](mdc:tailwind.config.ts). PostCSS configuration is in [postcss.config.js](mdc:postcss.config.js) and [postcss.config.mjs](mdc:postcss.config.mjs).

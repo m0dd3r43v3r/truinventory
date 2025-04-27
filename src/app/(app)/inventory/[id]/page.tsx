@@ -64,6 +64,15 @@ interface AuditLog {
   };
 }
 
+interface EditItemFormData {
+  name: string;
+  description: string;
+  quantity: number;
+  categoryId: string;
+  locationId: string;
+  customFields?: Record<string, any>;
+}
+
 export default function ItemDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const [item, setItem] = useState<ItemDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +80,7 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
   const [showEditModal, setShowEditModal] = useState(false);
   const [categories, setCategories] = useState<{ id: string; name: string; customFields: CustomField[]; }[]>([]);
   const [locations, setLocations] = useState<{ id: string; name: string; }[]>([]);
+  const [refreshingLogs, setRefreshingLogs] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const [itemId, setItemId] = useState<string | null>(null);
@@ -90,11 +100,13 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
     const fetchData = async () => {
       try {
         setLoading(true);
+        // Add timestamp to prevent caching
+        const timestamp = new Date().getTime();
         const [itemResponse, logsResponse, categoriesResponse, locationsResponse] = await Promise.all([
-          fetch(`/api/items/${itemId}`),
-          fetch(`/api/audit-logs?itemId=${itemId}`),
-          fetch('/api/categories'),
-          fetch('/api/locations')
+          fetch(`/api/items/${itemId}?t=${timestamp}`),
+          fetch(`/api/audit-logs?itemId=${itemId}&t=${timestamp}`),
+          fetch(`/api/categories?t=${timestamp}`),
+          fetch(`/api/locations?t=${timestamp}`)
         ]);
 
         if (!itemResponse.ok) {
@@ -150,13 +162,35 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
 
       if (!response.ok) {
         const errorData = await response.text();
+        
+        // If no changes were detected, close the modal but don't show an error
+        if (errorData.includes("No changes detected")) {
+          setShowEditModal(false);
+          toast({
+            variant: "default",
+            title: "No Changes",
+            description: "No changes were detected. The item was not updated.",
+          });
+          return;
+        }
+        
         throw new Error(errorData || "Failed to update item");
       }
 
-      // Refresh item data
-      const updatedItemResponse = await fetch(`/api/items/${item.id}`);
-      const updatedItem = await updatedItemResponse.json();
+      // Refresh item data and audit logs with cache busting
+      const timestamp = new Date().getTime();
+      const [updatedItemResponse, updatedLogsResponse] = await Promise.all([
+        fetch(`/api/items/${item.id}?t=${timestamp}`),
+        fetch(`/api/audit-logs?itemId=${item.id}&t=${timestamp}`)
+      ]);
+      
+      const [updatedItem, updatedLogs] = await Promise.all([
+        updatedItemResponse.json(),
+        updatedLogsResponse.json()
+      ]);
+      
       setItem(updatedItem);
+      setAuditLogs(updatedLogs);
       
       setShowEditModal(false);
       toast({
@@ -170,6 +204,32 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update item",
       });
+    }
+  };
+
+  // Function to refresh audit logs
+  const refreshAuditLogs = async () => {
+    if (!itemId) return;
+    
+    try {
+      setRefreshingLogs(true);
+      const timestamp = new Date().getTime();
+      const logsResponse = await fetch(`/api/audit-logs?itemId=${itemId}&t=${timestamp}`);
+      const logsData = await logsResponse.json();
+      setAuditLogs(logsData);
+      toast({
+        title: "Refreshed",
+        description: "Changelog has been refreshed",
+      });
+    } catch (error) {
+      console.error("Failed to refresh audit logs:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to refresh changelog",
+      });
+    } finally {
+      setRefreshingLogs(false);
     }
   };
 
@@ -242,19 +302,40 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
   const formatChangeValue = (field: string, value: any) => {
     if (value === null || value === undefined) return "Not set";
     
-    // Parse the value if it's a JSON string
-    const parsedValue = parseCustomFieldValue(value);
-    
-    // Handle different types of values
-    if (typeof parsedValue === "object") {
-      // For custom fields changes, we want to show a more readable format
-      if (field === "customFields") {
-        return Object.values(parsedValue)[0] || "Not set";
+    // Special handling for custom fields
+    if (field === "customFields") {
+      // If it's an empty object, return "Not set"
+      if (!value || Object.keys(value).length === 0) {
+        return "Not set";
       }
-      return JSON.stringify(parsedValue);
+      
+      // For custom fields, we need to show the field names and values
+      try {
+        // Get the category custom fields to map IDs to names
+        const categoryFields = item?.category?.customFields || [];
+        const fieldMap = Object.fromEntries(
+          categoryFields.map(field => [field.id, field.name])
+        );
+        
+        // Format each custom field
+        const formattedFields = Object.entries(value).map(([fieldId, fieldValue]) => {
+          const fieldName = fieldMap[fieldId] || fieldId;
+          return `${fieldName}: ${fieldValue}`;
+        });
+        
+        return formattedFields.join(", ");
+      } catch (e) {
+        console.error("Error formatting custom fields:", e);
+        return JSON.stringify(value);
+      }
     }
     
-    return parsedValue.toString();
+    // For other fields, use the standard formatting
+    if (typeof value === "object") {
+      return JSON.stringify(value);
+    }
+    
+    return String(value);
   };
 
   // Helper function to get field label
@@ -269,6 +350,59 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
     };
     return labels[field] || field;
   };
+
+  // Custom component to display custom field changes
+  function CustomFieldChanges({ 
+    from, 
+    to, 
+    categoryFields 
+  }: { 
+    from: Record<string, any>; 
+    to: Record<string, any>; 
+    categoryFields: CustomField[] 
+  }) {
+    // Create a map of field IDs to field names
+    const fieldMap = Object.fromEntries(
+      categoryFields.map(field => [field.id, field.name])
+    );
+    
+    // Get all field IDs that exist in either from or to
+    const allFieldIds = [...new Set([...Object.keys(from || {}), ...Object.keys(to || {})])];
+    
+    if (allFieldIds.length === 0) {
+      return (
+        <div className="text-sm pl-4">No custom field changes</div>
+      );
+    }
+    
+    return (
+      <div className="space-y-2 pl-4">
+        {allFieldIds.map(fieldId => {
+          const fieldName = fieldMap[fieldId] || fieldId;
+          const fromValue = from?.[fieldId] ?? "Not set";
+          const toValue = to?.[fieldId] ?? "Not set";
+          
+          // Only show fields that have changed
+          if (JSON.stringify(fromValue) === JSON.stringify(toValue)) {
+            return null;
+          }
+          
+          return (
+            <div key={fieldId} className="grid grid-cols-2 gap-4 text-sm border-l border-muted pl-2 py-1">
+              <div className="space-y-1">
+                <div className="font-medium">{fieldName}</div>
+                <div className="text-muted-foreground">From: {String(fromValue)}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="font-medium">&nbsp;</div>
+                <div>To: {String(toValue)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -417,9 +551,20 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
 
         {/* Changelog */}
         <Card className="md:col-span-2">
-          <CardHeader className="flex flex-row items-center gap-2">
-            <HistoryIcon className="h-5 w-5 text-muted-foreground" />
-            <CardTitle>Changelog</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HistoryIcon className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Changelog</CardTitle>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshAuditLogs}
+              disabled={refreshingLogs}
+              className="h-8"
+            >
+              {refreshingLogs ? "Refreshing..." : "Refresh"}
+            </Button>
           </CardHeader>
           <CardContent>
             {auditLogs.length === 0 ? (
@@ -450,14 +595,22 @@ export default function ItemDetailsPage({ params }: { params: Promise<{ id: stri
                               <div className="text-sm font-medium">
                                 Changed {getFieldLabel(field)}
                               </div>
-                              <div className="grid grid-cols-2 gap-4 text-sm pl-4">
-                                <div className="text-muted-foreground">
-                                  From: {formatChangeValue(field, change.from)}
+                              {field === "customFields" ? (
+                                <CustomFieldChanges 
+                                  from={change.from} 
+                                  to={change.to} 
+                                  categoryFields={item.category?.customFields || []}
+                                />
+                              ) : (
+                                <div className="grid grid-cols-2 gap-4 text-sm pl-4">
+                                  <div className="text-muted-foreground">
+                                    From: {formatChangeValue(field, change.from)}
+                                  </div>
+                                  <div>
+                                    To: {formatChangeValue(field, change.to)}
+                                  </div>
                                 </div>
-                                <div>
-                                  To: {formatChangeValue(field, change.to)}
-                                </div>
-                              </div>
+                              )}
                             </div>
                           )
                         ))}

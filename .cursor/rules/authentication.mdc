@@ -1,0 +1,14 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Authentication Logic
+
+Authentication is handled in [src/lib/auth.ts](mdc:src/lib/auth.ts), which configures NextAuth.js with both Azure AD and credentials providers. The authentication logic includes:
+- Azure AD integration (settings are loaded from the database)
+- Credentials-based login (email and password)
+- Role-based session and JWT callbacks
+- Audit logging for login events
+
+The authentication UI and routes are located in [src/app/(auth)/](mdc:src/app/(auth)/) and [src/app/login/](mdc:src/app/login/).

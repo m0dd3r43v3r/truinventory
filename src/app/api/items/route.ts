@@ -15,6 +15,11 @@ export async function GET(req: Request) {
     const search = searchParams.get("search")?.toLowerCase();
     const categoryId = searchParams.get("categoryId");
     const locationId = searchParams.get("locationId");
+    
+    // Pagination parameters
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
 
     // If locationId is provided, get all child locations
     let locationIds: string[] = [];
@@ -39,21 +44,30 @@ export async function GET(req: Request) {
       }
     }
 
+    // Build the where clause for filtering
+    const whereClause = {
+      AND: [
+        search
+          ? {
+              OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {},
+        categoryId ? { categoryId } : {},
+        locationId ? { locationId: { in: locationIds } } : {},
+      ],
+    };
+
+    // Get total count for pagination
+    const totalItems = await db.item.count({
+      where: whereClause,
+    });
+
+    // Get paginated items
     const items = await db.item.findMany({
-      where: {
-        AND: [
-          search
-            ? {
-                OR: [
-                  { name: { contains: search, mode: "insensitive" } },
-                  { description: { contains: search, mode: "insensitive" } },
-                ],
-              }
-            : {},
-          categoryId ? { categoryId } : {},
-          locationId ? { locationId: { in: locationIds } } : {},
-        ],
-      },
+      where: whereClause,
       include: {
         category: {
           select: {
@@ -77,9 +91,20 @@ export async function GET(req: Request) {
       orderBy: {
         updatedAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
-    return NextResponse.json(items);
+    // Return items with pagination metadata
+    return NextResponse.json({
+      items,
+      pagination: {
+        total: totalItems,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+      }
+    });
   } catch (error) {
     console.error("[ITEMS_GET_ERROR]", error);
     return new NextResponse("Internal Server Error", { status: 500 });
